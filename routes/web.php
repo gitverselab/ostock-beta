@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\Master\ItemController;
+use App\Controllers\Master\WarehouseController;
 use App\Support\Auth;
 use App\Support\Response;
 
@@ -27,3 +28,9 @@ $router->get('/items/create', [ItemController::class, 'create']);
 $router->post('/items/create', [ItemController::class, 'store']);
 $router->get('/items/edit', [ItemController::class, 'edit']);
 $router->post('/items/edit', [ItemController::class, 'update']);
+
+$router->get('/warehouses', [WarehouseController::class, 'index']);
+$router->get('/warehouses/create', [WarehouseController::class, 'create']);
+$router->post('/warehouses/create', [WarehouseController::class, 'store']);
+$router->get('/warehouses/edit', [WarehouseController::class, 'edit']);
+$router->post('/warehouses/edit', [WarehouseController::class, 'update']);

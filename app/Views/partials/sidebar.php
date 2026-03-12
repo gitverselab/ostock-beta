@@ -7,7 +7,9 @@ use App\Support\Auth;
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $currentPath = is_string($currentPath) ? rtrim($currentPath, '/') ?: '/' : '/';
 
-$dashboardActive = $currentPath === '/dashboard';
+$isDashboard = $currentPath === '/dashboard';
+$isItems = str_starts_with($currentPath, '/items');
+$isWarehouses = str_starts_with($currentPath, '/warehouses');
 
 $navLinkClass = function (bool $active): string {
     if ($active) {
@@ -38,20 +40,26 @@ $navLinkClass = function (bool $active): string {
             Main
         </div>
 
-        <a href="/dashboard" class="<?= $navLinkClass($dashboardActive) ?>">
-            Dashboard
-        </a>
+        <div class="space-y-1">
+            <a href="/dashboard" class="<?= $navLinkClass($isDashboard) ?>">
+                Dashboard
+            </a>
+
+            <a href="/items" class="<?= $navLinkClass($isItems) ?>">
+                Items
+            </a>
+
+            <a href="/warehouses" class="<?= $navLinkClass($isWarehouses) ?>">
+                Warehouses
+            </a>
+        </div>
 
         <div class="mt-6 mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
             Next Modules
         </div>
 
         <div class="rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            Items module will be added in the next batch.
-        </div>
-
-        <div class="mt-3 rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            Warehouses module follows after Items.
+            Inbound, outbound, and transfer modules come after Warehouses.
         </div>
     </nav>
 </aside>
