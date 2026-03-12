@@ -1,11 +1,6 @@
 RewriteEngine On
 
-# If the request is not already for /public
-RewriteCond %{REQUEST_URI} !^/public/
-
-# If it's not a real file or folder
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-
-# Send everything to the front controller
-RewriteRule ^(.*)$ public/index.php [QSA,L]
+RewriteRule ^login/?$ public/index.php [L,QSA]
+RewriteRule ^dashboard/?$ public/index.php [L,QSA]
+RewriteRule ^api/health/?$ public/index.php [L,QSA]
+RewriteRule ^$ public/index.php [L,QSA]
