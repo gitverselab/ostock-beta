@@ -1,9 +1,9 @@
 RewriteEngine On
 
-# Let existing real files and folders load normally
+# Let real files/folders load normally
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Send everything else to the root front controller
+# Send all pretty URLs to the root front controller
 RewriteRule ^ index.php [L,QSA]
