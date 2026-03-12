@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
+use App\Controllers\Master\ItemController;
 use App\Support\Auth;
 use App\Support\Response;
 
@@ -20,3 +21,9 @@ $router->post('/login', [AuthController::class, 'login']);
 $router->post('/logout', [AuthController::class, 'logout']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);
+
+$router->get('/items', [ItemController::class, 'index']);
+$router->get('/items/create', [ItemController::class, 'create']);
+$router->post('/items/create', [ItemController::class, 'store']);
+$router->get('/items/edit', [ItemController::class, 'edit']);
+$router->post('/items/edit', [ItemController::class, 'update']);
