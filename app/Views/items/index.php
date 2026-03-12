@@ -2,204 +2,89 @@
 
 declare(strict_types=1);
 
-namespace App\Controllers\Master;
+$items = is_array($items ?? null) ? $items : [];
+?>
 
-use App\Controllers\BaseController;
-use App\Repositories\ItemRepository;
-use App\Support\Auth;
-use App\Support\Request;
-use App\Support\Session;
-use Throwable;
+<div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+        <h2 class="text-2xl font-bold text-slate-800">Items</h2>
+        <p class="mt-1 text-sm text-slate-500">
+            Manage finished goods and other item master records.
+        </p>
+    </div>
 
-class ItemController extends BaseController
-{
-    private ItemRepository $items;
+    <a
+        href="/items/create"
+        class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+    >
+        Add New Item
+    </a>
+</div>
 
-    public function __construct()
-    {
-        $this->items = new ItemRepository();
-    }
-
-    public function index(Request $request)
-    {
-        if (!Auth::check()) {
-            Session::flash('error', 'Please sign in first.');
-            return $this->redirect('/login');
-        }
-
-        return $this->view('items.index', [
-            'title' => 'Items',
-            'items' => $this->items->all(),
-        ]);
-    }
-
-    public function create(Request $request)
-    {
-        if (!Auth::check()) {
-            Session::flash('error', 'Please sign in first.');
-            return $this->redirect('/login');
-        }
-
-        return $this->view('items.create', [
-            'title' => 'Add Item',
-            'categories' => $this->items->getCategories(),
-            'old' => Session::getFlash('old', []),
-            'formError' => Session::getFlash('error'),
-        ]);
-    }
-
-    public function store(Request $request)
-    {
-        if (!Auth::check()) {
-            Session::flash('error', 'Please sign in first.');
-            return $this->redirect('/login');
-        }
-
-        $data = $this->normalizeFormData($request);
-
-        $validationError = $this->validate($data);
-
-        if ($validationError !== null) {
-            Session::flash('error', $validationError);
-            Session::flash('old', $data);
-            return $this->redirect('/items/create');
-        }
-
-        if ($this->items->itemCodeExists($data['item_code'])) {
-            Session::flash('error', 'Item code already exists.');
-            Session::flash('old', $data);
-            return $this->redirect('/items/create');
-        }
-
-        try {
-            $this->items->create($data);
-            Session::flash('success', 'Item successfully created.');
-            return $this->redirect('/items');
-        } catch (Throwable $e) {
-            Session::flash('error', 'Failed to save item.');
-            Session::flash('old', $data);
-            return $this->redirect('/items/create');
-        }
-    }
-
-    public function edit(Request $request)
-    {
-        if (!Auth::check()) {
-            Session::flash('error', 'Please sign in first.');
-            return $this->redirect('/login');
-        }
-
-        $id = (int) $request->input('id', 0);
-
-        if ($id <= 0) {
-            Session::flash('error', 'Invalid item selected.');
-            return $this->redirect('/items');
-        }
-
-        $item = $this->items->find($id);
-
-        if (!$item) {
-            Session::flash('error', 'Item not found.');
-            return $this->redirect('/items');
-        }
-
-        return $this->view('items.edit', [
-            'title' => 'Edit Item',
-            'item' => $item,
-            'categories' => $this->items->getCategories(),
-            'formError' => Session::getFlash('error'),
-        ]);
-    }
-
-    public function update(Request $request)
-    {
-        if (!Auth::check()) {
-            Session::flash('error', 'Please sign in first.');
-            return $this->redirect('/login');
-        }
-
-        $id = (int) $request->input('id', 0);
-
-        if ($id <= 0) {
-            Session::flash('error', 'Invalid item selected.');
-            return $this->redirect('/items');
-        }
-
-        $existingItem = $this->items->find($id);
-
-        if (!$existingItem) {
-            Session::flash('error', 'Item not found.');
-            return $this->redirect('/items');
-        }
-
-        $data = $this->normalizeFormData($request);
-
-        $validationError = $this->validate($data);
-
-        if ($validationError !== null) {
-            Session::flash('error', $validationError);
-            return $this->redirect('/items/edit?id=' . $id);
-        }
-
-        if ($this->items->itemCodeExists($data['item_code'], $id)) {
-            Session::flash('error', 'Item code already exists.');
-            return $this->redirect('/items/edit?id=' . $id);
-        }
-
-        try {
-            $this->items->update($id, $data);
-            Session::flash('success', 'Item successfully updated.');
-            return $this->redirect('/items');
-        } catch (Throwable $e) {
-            Session::flash('error', 'Failed to update item.');
-            return $this->redirect('/items/edit?id=' . $id);
-        }
-    }
-
-    private function normalizeFormData(Request $request): array
-    {
-        return [
-            'name' => trim((string) $request->input('name')),
-            'item_code' => trim((string) $request->input('item_code')),
-            'uom' => trim((string) $request->input('uom')),
-            'category_id' => (int) $request->input('category_id', 0),
-            'cost' => (float) $request->input('cost', 0),
-            'is_calendar_item' => $request->input('is_calendar_item') ? 1 : 0,
-            'primary_uom_label' => trim((string) $request->input('primary_uom_label')),
-            'secondary_uom_label' => trim((string) $request->input('secondary_uom_label')),
-        ];
-    }
-
-    private function validate(array $data): ?string
-    {
-        if ($data['name'] === '') {
-            return 'Item name is required.';
-        }
-
-        if ($data['item_code'] === '') {
-            return 'Item code is required.';
-        }
-
-        if ($data['category_id'] <= 0) {
-            return 'Please select a category.';
-        }
-
-        if ($data['primary_uom_label'] === '') {
-            return 'Primary unit label is required.';
-        }
-
-        if ($data['secondary_uom_label'] === '') {
-            return 'Secondary unit label is required.';
-        }
-
-        if ($data['uom'] === '') {
-            return 'Base UOM is required.';
-        }
-
-        if ($data['cost'] < 0) {
-            return 'Cost cannot be negative.';
-        }
-
-        return null;
-    }
-}
+<div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <?php if (count($items) > 0): ?>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Item Name</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Item Code</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Category</th>
+                        <th class="px-4 py-3 text-right font-semibold text-slate-600">Cost</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Primary Unit</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Secondary Unit</th>
+                        <th class="px-4 py-3 text-center font-semibold text-slate-600">Calendar</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <?php foreach ($items as $item): ?>
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-4 py-3 font-medium text-slate-800">
+                                <?= htmlspecialchars((string) ($item['name'] ?? '')) ?>
+                            </td>
+                            <td class="px-4 py-3 text-slate-700">
+                                <?= htmlspecialchars((string) ($item['item_code'] ?? '')) ?>
+                            </td>
+                            <td class="px-4 py-3 text-slate-700">
+                                <?= htmlspecialchars((string) ($item['category_name'] ?? 'Uncategorized')) ?>
+                            </td>
+                            <td class="px-4 py-3 text-right text-slate-700">
+                                ₱<?= number_format((float) ($item['cost'] ?? 0), 2) ?>
+                            </td>
+                            <td class="px-4 py-3 text-slate-700">
+                                <?= htmlspecialchars((string) ($item['primary_uom_label'] ?? '')) ?>
+                            </td>
+                            <td class="px-4 py-3 text-slate-700">
+                                <?= htmlspecialchars((string) ($item['secondary_uom_label'] ?? '')) ?>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <?php if ((int) ($item['is_calendar_item'] ?? 0) === 1): ?>
+                                    <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                                        Yes
+                                    </span>
+                                <?php else: ?>
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                        No
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a
+                                    href="/items/edit?id=<?= (int) ($item['id'] ?? 0) ?>"
+                                    class="inline-flex items-center rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                >
+                                    Edit
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <div class="px-6 py-10 text-center text-sm text-slate-500">
+            No items found yet.
+        </div>
+    <?php endif; ?>
+</div>
