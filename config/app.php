@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'name' => 'OStock MVC',
+    'name' => 'OStock',
     'url' => 'http://localhost',
     'timezone' => 'Asia/Manila',
 ];
