@@ -12,10 +12,42 @@ ini_set('display_errors', '1');
 
 /*
 |--------------------------------------------------------------------------
+| Simple .env Loader
+|--------------------------------------------------------------------------
+*/
+$envPath = BASE_PATH . '/.env';
+
+if (file_exists($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        if (!str_contains($line, '=')) {
+            continue;
+        }
+
+        [$name, $value] = explode('=', $line, 2);
+
+        $name = trim($name);
+        $value = trim($value);
+
+        // Remove wrapping quotes if present
+        $value = trim($value, "\"'");
+
+        $_ENV[$name] = $value;
+        $_SERVER[$name] = $value;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Simple Autoloader
 |--------------------------------------------------------------------------
-| This lets your namespaced classes under App\... load automatically
-| without needing Composer yet.
 */
 spl_autoload_register(function (string $class): void {
     $prefix = 'App\\';
@@ -45,13 +77,8 @@ $config = [
 
 $appConfig = $config['app'];
 
-date_default_timezone_set($appConfig['timezone'] ?? 'Asia/Manila');
+date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? $appConfig['timezone'] ?? 'Asia/Manila');
 
-/*
-|--------------------------------------------------------------------------
-| Boot Core Services
-|--------------------------------------------------------------------------
-*/
 use App\Support\Database;
 use App\Support\Router;
 
@@ -59,10 +86,5 @@ Database::init($config['database']);
 
 $router = new Router();
 
-/*
-|--------------------------------------------------------------------------
-| Register Routes
-|--------------------------------------------------------------------------
-*/
 require BASE_PATH . '/routes/web.php';
 require BASE_PATH . '/routes/api.php';
