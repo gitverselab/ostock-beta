@@ -1,6 +1,12 @@
 RewriteEngine On
 
-RewriteRule ^login/?$ public/index.php [L,QSA]
-RewriteRule ^dashboard/?$ public/index.php [L,QSA]
-RewriteRule ^api/health/?$ public/index.php [L,QSA]
-RewriteRule ^$ public/index.php [L,QSA]
+# If the request is already inside /public, let public/.htaccess handle it
+RewriteRule ^public/ - [L]
+
+# Serve existing files and folders normally
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else goes to the front controller
+RewriteRule ^ public/index.php [L,QSA]
