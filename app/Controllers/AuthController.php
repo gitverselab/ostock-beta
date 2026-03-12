@@ -26,9 +26,10 @@ class AuthController extends BaseController
             Session::put('user', [
                 'id' => 1,
                 'username' => 'admin',
-                'role' => 1
+                'role' => 1,
             ]);
 
+            Session::flash('success', 'Welcome back.');
             return $this->redirect('/dashboard');
         }
 
@@ -39,6 +40,7 @@ class AuthController extends BaseController
     public function logout(Request $request)
     {
         Session::forget('user');
+        Session::flash('success', 'You have been logged out.');
         return $this->redirect('/login');
     }
 }

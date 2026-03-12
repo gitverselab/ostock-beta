@@ -12,6 +12,7 @@ class DashboardController extends BaseController
     public function index(Request $request)
     {
         if (!Session::get('user')) {
+            Session::flash('error', 'Please login first.');
             return $this->redirect('/login');
         }
 
