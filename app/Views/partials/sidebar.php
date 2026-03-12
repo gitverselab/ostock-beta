@@ -22,7 +22,7 @@ $navLinkClass = function (bool $active): string {
 
 <aside class="w-full bg-slate-900 text-white md:min-h-screen md:w-72">
     <div class="border-b border-slate-800 px-6 py-5">
-        <div class="text-2xl font-bold tracking-tight">OStock MVC</div>
+        <div class="text-2xl font-bold tracking-tight">OStock</div>
         <div class="mt-1 text-sm text-slate-400">Inventory Management</div>
     </div>
 
