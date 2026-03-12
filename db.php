@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
-$user = "u539825091_inventory_t";
+$user = "u539825091_ostockbeta";
 $password = "B@dw0lfz";
-$database = "u539825091_inventory_t";
+$database = "u539825091_ostockbeta";
 
 // Set the default timezone for PHP
 date_default_timezone_set('Asia/Manila'); // This is for PHP only
