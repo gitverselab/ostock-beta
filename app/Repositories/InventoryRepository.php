@@ -172,4 +172,64 @@ class InventoryRepository
 
         return ((int) ($row['count'] ?? 0)) > 0;
     }
+
+    public function getInboundRecords(array $filters = []): array
+    {
+        $sql = "
+            SELECT
+                inventory.id,
+                inventory.item_id,
+                inventory.warehouse_id,
+                inventory.pallet_id,
+                inventory.quantity,
+                inventory.uom,
+                inventory.items_per_pc,
+                inventory.production_date,
+                inventory.expiry_date,
+                inventory.date_received,
+                inventory.processed_by,
+                items.name AS item_name,
+                warehouses.name AS warehouse_name
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND inventory.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
+
+        if (!empty($filters['warehouse_id'])) {
+            $sql .= " AND inventory.warehouse_id = :warehouse_id";
+            $params['warehouse_id'] = (int) $filters['warehouse_id'];
+        }
+
+        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $sql .= " AND DATE(inventory.date_received) BETWEEN :start_date AND :end_date";
+            $params['start_date'] = $filters['start_date'];
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        $sql .= " ORDER BY inventory.date_received DESC";
+
+        $limit = $filters['limit'] ?? '20';
+        $allowedLimits = ['20', '50', '100', '500', 'ALL'];
+
+        if (!in_array((string) $limit, $allowedLimits, true)) {
+            $limit = '20';
+        }
+
+        if ($limit !== 'ALL') {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
+    }
 }

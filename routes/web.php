@@ -42,3 +42,4 @@ $router->post('/warehouses/delete', [WarehouseController::class, 'destroy']);
 
 $router->get('/inventory/inbound', [InboundController::class, 'create']);
 $router->post('/inventory/inbound', [InboundController::class, 'store']);
+$router->get('/inventory/inbound/history', [InboundController::class, 'history']);

@@ -10,7 +10,8 @@ $currentPath = is_string($currentPath) ? rtrim($currentPath, '/') ?: '/' : '/';
 $isDashboard = $currentPath === '/dashboard';
 $isItems = str_starts_with($currentPath, '/items');
 $isWarehouses = str_starts_with($currentPath, '/warehouses');
-$isInbound = str_starts_with($currentPath, '/inventory/inbound');
+$isInboundCreate = $currentPath === '/inventory/inbound';
+$isInboundHistory = $currentPath === '/inventory/inbound/history';
 
 $navLinkClass = function (bool $active): string {
     if ($active) {
@@ -60,8 +61,12 @@ $navLinkClass = function (bool $active): string {
         </div>
 
         <div class="space-y-1">
-            <a href="/inventory/inbound" class="<?= $navLinkClass($isInbound) ?>">
-                Inbound
+            <a href="/inventory/inbound" class="<?= $navLinkClass($isInboundCreate) ?>">
+                Inbound Entry
+            </a>
+
+            <a href="/inventory/inbound/history" class="<?= $navLinkClass($isInboundHistory) ?>">
+                Inbound History
             </a>
         </div>
 
@@ -70,7 +75,7 @@ $navLinkClass = function (bool $active): string {
         </div>
 
         <div class="rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            Outbound and transfer modules come after inbound.
+            Outbound comes next, followed by transfer history and stock movement dashboards.
         </div>
     </nav>
 </aside>

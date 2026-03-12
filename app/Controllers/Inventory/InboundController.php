@@ -66,7 +66,7 @@ class InboundController extends BaseController
             );
 
             Session::flash('success', 'Inbound transaction successfully recorded.');
-            return $this->redirect('/inventory/inbound');
+            return $this->redirect('/inventory/inbound/history');
         } catch (Throwable $e) {
             Session::flash('error', $e->getMessage());
             Session::flash('old', [
@@ -76,6 +76,32 @@ class InboundController extends BaseController
 
             return $this->redirect('/inventory/inbound');
         }
+    }
+
+    public function history(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $filters = [
+            'item_id' => (int) $request->input('item_id', 0),
+            'warehouse_id' => (int) $request->input('warehouse_id', 0),
+            'start_date' => trim((string) $request->input('start_date', '')),
+            'end_date' => trim((string) $request->input('end_date', '')),
+            'limit' => trim((string) $request->input('limit', '20')),
+        ];
+
+        $records = $this->inventory->getInboundRecords($filters);
+
+        return $this->view('inventory.inbound.history', [
+            'title' => 'Inbound History',
+            'records' => $records,
+            'items' => $this->items->all(),
+            'warehouses' => $this->warehouses->all(),
+            'filters' => $filters,
+        ]);
     }
 
     public function generatePallet(Request $request)
