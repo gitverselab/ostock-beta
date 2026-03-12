@@ -28,9 +28,13 @@ $router->get('/items/create', [ItemController::class, 'create']);
 $router->post('/items/create', [ItemController::class, 'store']);
 $router->get('/items/edit', [ItemController::class, 'edit']);
 $router->post('/items/edit', [ItemController::class, 'update']);
+$router->get('/items/delete', [ItemController::class, 'delete']);
+$router->post('/items/delete', [ItemController::class, 'destroy']);
 
 $router->get('/warehouses', [WarehouseController::class, 'index']);
 $router->get('/warehouses/create', [WarehouseController::class, 'create']);
 $router->post('/warehouses/create', [WarehouseController::class, 'store']);
 $router->get('/warehouses/edit', [WarehouseController::class, 'edit']);
 $router->post('/warehouses/edit', [WarehouseController::class, 'update']);
+$router->get('/warehouses/delete', [WarehouseController::class, 'delete']);
+$router->post('/warehouses/delete', [WarehouseController::class, 'destroy']);

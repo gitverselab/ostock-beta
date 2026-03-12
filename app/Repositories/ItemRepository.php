@@ -33,9 +33,12 @@ class ItemRepository
     public function find(int $id): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT *
-            FROM items
-            WHERE id = :id
+            SELECT
+                i.*,
+                ic.category_name
+            FROM items i
+            LEFT JOIN item_categories ic ON i.category_id = ic.id
+            WHERE i.id = :id
             LIMIT 1
         ");
 
@@ -152,6 +155,18 @@ class ItemRepository
             'is_calendar_item' => $data['is_calendar_item'],
             'primary_uom_label' => $data['primary_uom_label'],
             'secondary_uom_label' => $data['secondary_uom_label'],
+        ]);
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare("
+            DELETE FROM items
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
         ]);
     }
 }

@@ -105,4 +105,16 @@ class WarehouseRepository
             'address' => $data['address'],
         ]);
     }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare("
+            DELETE FROM warehouses
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
+        ]);
+    }
 }

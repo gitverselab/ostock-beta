@@ -70,12 +70,21 @@ $items = is_array($items ?? null) ? $items : [];
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-3">
-                                <a
-                                    href="/items/edit?id=<?= (int) ($item['id'] ?? 0) ?>"
-                                    class="inline-flex items-center rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-                                >
-                                    Edit
-                                </a>
+                                <div class="flex flex-wrap gap-2">
+                                    <a
+                                        href="/items/edit?id=<?= (int) ($item['id'] ?? 0) ?>"
+                                        class="inline-flex items-center rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                    >
+                                        Edit
+                                    </a>
+
+                                    <a
+                                        href="/items/delete?id=<?= (int) ($item['id'] ?? 0) ?>"
+                                        class="inline-flex items-center rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                                    >
+                                        Delete
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

@@ -154,6 +154,64 @@ class WarehouseController extends BaseController
         }
     }
 
+    public function delete(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid warehouse selected.');
+            return $this->redirect('/warehouses');
+        }
+
+        $warehouse = $this->warehouses->find($id);
+
+        if (!$warehouse) {
+            Session::flash('error', 'Warehouse not found.');
+            return $this->redirect('/warehouses');
+        }
+
+        return $this->view('warehouses.delete', [
+            'title' => 'Delete Warehouse',
+            'warehouse' => $warehouse,
+        ]);
+    }
+
+    public function destroy(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid warehouse selected.');
+            return $this->redirect('/warehouses');
+        }
+
+        $warehouse = $this->warehouses->find($id);
+
+        if (!$warehouse) {
+            Session::flash('error', 'Warehouse not found.');
+            return $this->redirect('/warehouses');
+        }
+
+        try {
+            $this->warehouses->delete($id);
+            Session::flash('success', 'Warehouse successfully deleted.');
+            return $this->redirect('/warehouses');
+        } catch (Throwable $e) {
+            Session::flash('error', 'Failed to delete warehouse. It may still be referenced by inventory or transaction records.');
+            return $this->redirect('/warehouses');
+        }
+    }
+
     private function normalizeFormData(Request $request): array
     {
         return [

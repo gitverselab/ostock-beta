@@ -156,6 +156,64 @@ class ItemController extends BaseController
         }
     }
 
+    public function delete(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid item selected.');
+            return $this->redirect('/items');
+        }
+
+        $item = $this->items->find($id);
+
+        if (!$item) {
+            Session::flash('error', 'Item not found.');
+            return $this->redirect('/items');
+        }
+
+        return $this->view('items.delete', [
+            'title' => 'Delete Item',
+            'item' => $item,
+        ]);
+    }
+
+    public function destroy(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid item selected.');
+            return $this->redirect('/items');
+        }
+
+        $item = $this->items->find($id);
+
+        if (!$item) {
+            Session::flash('error', 'Item not found.');
+            return $this->redirect('/items');
+        }
+
+        try {
+            $this->items->delete($id);
+            Session::flash('success', 'Item successfully deleted.');
+            return $this->redirect('/items');
+        } catch (Throwable $e) {
+            Session::flash('error', 'Failed to delete item. It may still be referenced by inventory or transaction records.');
+            return $this->redirect('/items');
+        }
+    }
+
     private function normalizeFormData(Request $request): array
     {
         return [
