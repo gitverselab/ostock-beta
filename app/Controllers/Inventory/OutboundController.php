@@ -6,6 +6,7 @@ namespace App\Controllers\Inventory;
 
 use App\Controllers\BaseController;
 use App\Repositories\InventoryRepository;
+use App\Repositories\ItemRepository;
 use App\Repositories\WarehouseRepository;
 use App\Services\OutboundService;
 use App\Support\Auth;
@@ -18,12 +19,14 @@ class OutboundController extends BaseController
     private WarehouseRepository $warehouses;
     private InventoryRepository $inventory;
     private OutboundService $outboundService;
+    private ItemRepository $items;
 
     public function __construct()
     {
         $this->warehouses = new WarehouseRepository();
         $this->inventory = new InventoryRepository();
         $this->outboundService = new OutboundService();
+        $this->items = new ItemRepository();
     }
 
     public function create(Request $request)
@@ -65,7 +68,7 @@ class OutboundController extends BaseController
             );
 
             Session::flash('success', 'Outbound transaction successfully recorded.');
-            return $this->redirect('/inventory/outbound');
+            return $this->redirect('/inventory/outbound/history');
         } catch (Throwable $e) {
             Session::flash('error', $e->getMessage());
             Session::flash('old', [
@@ -76,6 +79,30 @@ class OutboundController extends BaseController
 
             return $this->redirect('/inventory/outbound');
         }
+    }
+
+    public function history(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $filters = [
+            'item_id' => (int) $request->input('item_id', 0),
+            'warehouse_id' => (int) $request->input('warehouse_id', 0),
+            'start_date' => trim((string) $request->input('start_date', '')),
+            'end_date' => trim((string) $request->input('end_date', '')),
+            'limit' => trim((string) $request->input('limit', '20')),
+        ];
+
+        return $this->view('inventory.outbound.history', [
+            'title' => 'Outbound History',
+            'records' => $this->inventory->getOutboundRecords($filters),
+            'items' => $this->items->all(),
+            'warehouses' => $this->warehouses->all(),
+            'filters' => $filters,
+        ]);
     }
 
     public function pallets(Request $request)

@@ -47,3 +47,4 @@ $router->get('/inventory/inbound/history', [InboundController::class, 'history']
 
 $router->get('/inventory/outbound', [OutboundController::class, 'create']);
 $router->post('/inventory/outbound', [OutboundController::class, 'store']);
+$router->get('/inventory/outbound/history', [OutboundController::class, 'history']);

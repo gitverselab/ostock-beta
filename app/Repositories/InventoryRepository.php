@@ -335,6 +335,70 @@ class InventoryRepository
         return $stmt->fetchAll() ?: [];
     }
 
+    public function getOutboundRecords(array $filters = []) : array
+    {
+        $sql = "
+            SELECT
+                oi.id,
+                oi.item_id,
+                oi.warehouse_id,
+                oi.pallet_id,
+                oi.quantity_removed,
+                oi.items_per_pc,
+                oi.production_date,
+                oi.expiry_date,
+                oi.outbound_type,
+                oi.date_removed,
+                oi.processed_by,
+                i.name AS item_name,
+                w.name AS warehouse_name
+            FROM outbound_inventory oi
+            INNER JOIN items i ON oi.item_id = i.id
+            INNER JOIN warehouses w ON oi.warehouse_id = w.id
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND oi.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
+
+        if (!empty($filters['warehouse_id'])) {
+            $sql .= " AND oi.warehouse_id = :warehouse_id";
+            $params['warehouse_id'] = (int) $filters['warehouse_id'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(oi.date_removed) >= :start_date";
+            $params['start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(oi.date_removed) <= :end_date";
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        $sql .= " ORDER BY oi.date_removed DESC";
+
+        $limit = $filters['limit'] ?? '20';
+        $allowedLimits = ['20', '50', '100', '500', 'ALL'];
+
+        if (!in_array((string) $limit, $allowedLimits, true)) {
+            $limit = '20';
+        }
+
+        if ($limit !== 'ALL') {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function getOutboundItemOptions(): array
     {
         $stmt = $this->pdo->query("
