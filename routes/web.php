@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\Inventory\InboundController;
+use App\Controllers\Inventory\OutboundController;
 use App\Controllers\Master\ItemController;
 use App\Controllers\Master\WarehouseController;
 use App\Support\Auth;
@@ -43,3 +44,6 @@ $router->post('/warehouses/delete', [WarehouseController::class, 'destroy']);
 $router->get('/inventory/inbound', [InboundController::class, 'create']);
 $router->post('/inventory/inbound', [InboundController::class, 'store']);
 $router->get('/inventory/inbound/history', [InboundController::class, 'history']);
+
+$router->get('/inventory/outbound', [OutboundController::class, 'create']);
+$router->post('/inventory/outbound', [OutboundController::class, 'store']);
