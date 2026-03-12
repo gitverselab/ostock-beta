@@ -1,0 +1,22 @@
+#<Files "login.php">  
+#  Order deny,allow
+#  Deny from all
+#  Allow from 140.245.100.86
+#</Files>
+
+
+# Enable URL rewriting
+#RewriteEngine On
+#RewriteBase /inventory/
+
+# Redirect to index.php for all requests
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+#RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?page=$1 [QSA,L]
+RewriteEngine On
+RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?page=$1 [L]
+
+# Optional: Redirect to www
+# RewriteCond %{HTTP_HOST} !^www\.
+# RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
