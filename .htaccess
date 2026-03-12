@@ -1,12 +1,9 @@
 RewriteEngine On
 
-# If the request is already inside /public, let public/.htaccess handle it
-RewriteRule ^public/ - [L]
-
-# Serve existing files and folders normally
+# Let existing real files and folders load normally
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Everything else goes to the front controller
-RewriteRule ^ public/index.php [L,QSA]
+# Send everything else to the root front controller
+RewriteRule ^ index.php [L,QSA]
