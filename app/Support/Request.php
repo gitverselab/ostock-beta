@@ -14,6 +14,8 @@ class Request
     public function uri(): string
     {
         $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $uri = is_string($uri) ? $uri : '/';
+
         return rtrim($uri, '/') ?: '/';
     }
 
@@ -25,6 +27,17 @@ class Request
     public function all(): array
     {
         return array_merge($_GET, $_POST);
+    }
+
+    public function only(array $keys): array
+    {
+        $data = [];
+
+        foreach ($keys as $key) {
+            $data[$key] = $this->input($key);
+        }
+
+        return $data;
     }
 
     public function isPost(): bool

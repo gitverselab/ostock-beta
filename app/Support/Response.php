@@ -10,7 +10,8 @@ class Response
         private string $content = '',
         private int $status = 200,
         private array $headers = []
-    ) {}
+    ) {
+    }
 
     public static function make(string $content, int $status = 200, array $headers = []): self
     {
@@ -22,7 +23,7 @@ class Response
         return new self(
             json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $status,
-            ['Content-Type' => 'application/json']
+            ['Content-Type' => 'application/json; charset=UTF-8']
         );
     }
 

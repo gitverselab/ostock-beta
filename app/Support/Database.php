@@ -38,7 +38,7 @@ class Database
 
     public static function connection(): PDO
     {
-        if (!self::$connection) {
+        if (!self::$connection instanceof PDO) {
             throw new PDOException('Database connection has not been initialized.');
         }
 

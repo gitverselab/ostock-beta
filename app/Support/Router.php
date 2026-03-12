@@ -18,9 +18,20 @@ class Router
         $this->addRoute('POST', $uri, $action);
     }
 
+    public function put(string $uri, array|callable $action): void
+    {
+        $this->addRoute('PUT', $uri, $action);
+    }
+
+    public function delete(string $uri, array|callable $action): void
+    {
+        $this->addRoute('DELETE', $uri, $action);
+    }
+
     private function addRoute(string $method, string $uri, array|callable $action): void
     {
-        $this->routes[$method][rtrim($uri, '/') ?: '/'] = $action;
+        $normalizedUri = rtrim($uri, '/') ?: '/';
+        $this->routes[$method][$normalizedUri] = $action;
     }
 
     public function dispatch(Request $request): Response
@@ -30,7 +41,7 @@ class Router
 
         $action = $this->routes[$method][$uri] ?? null;
 
-        if (!$action) {
+        if ($action === null) {
             return Response::make('404 Not Found', 404);
         }
 
@@ -39,8 +50,23 @@ class Router
         }
 
         [$controller, $methodName] = $action;
+
+        if (!class_exists($controller)) {
+            return Response::make("Controller not found: {$controller}", 500);
+        }
+
         $instance = new $controller();
 
-        return $instance->$methodName($request);
+        if (!method_exists($instance, $methodName)) {
+            return Response::make("Method not found: {$methodName}", 500);
+        }
+
+        $response = $instance->$methodName($request);
+
+        if (!$response instanceof Response) {
+            return Response::make('Invalid response returned by controller.', 500);
+        }
+
+        return $response;
     }
 }

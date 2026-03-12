@@ -12,10 +12,14 @@ class View
         $layoutPath = BASE_PATH . '/app/Views/layouts/' . $layout . '.php';
 
         if (!file_exists($viewPath)) {
-            throw new \RuntimeException("View not found: {$view}");
+            throw new \RuntimeException("View not found: {$viewPath}");
         }
 
-        extract($data);
+        if (!file_exists($layoutPath)) {
+            throw new \RuntimeException("Layout not found: {$layoutPath}");
+        }
+
+        extract($data, EXTR_SKIP);
 
         ob_start();
         require $viewPath;
@@ -30,10 +34,11 @@ class View
     {
         $partialPath = BASE_PATH . '/app/Views/' . str_replace('.', '/', $partial) . '.php';
 
-        extract($data);
-
-        if (file_exists($partialPath)) {
-            require $partialPath;
+        if (!file_exists($partialPath)) {
+            throw new \RuntimeException("Partial not found: {$partialPath}");
         }
+
+        extract($data, EXTR_SKIP);
+        require $partialPath;
     }
 }
