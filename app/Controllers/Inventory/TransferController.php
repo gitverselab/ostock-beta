@@ -6,6 +6,7 @@ namespace App\Controllers\Inventory;
 
 use App\Controllers\BaseController;
 use App\Repositories\InventoryRepository;
+use App\Repositories\ItemRepository;
 use App\Repositories\WarehouseRepository;
 use App\Services\TransferService;
 use App\Support\Auth;
@@ -18,12 +19,14 @@ class TransferController extends BaseController
     private WarehouseRepository $warehouses;
     private InventoryRepository $inventory;
     private TransferService $transferService;
+    private ItemRepository $items;
 
     public function __construct()
     {
         $this->warehouses = new WarehouseRepository();
         $this->inventory = new InventoryRepository();
         $this->transferService = new TransferService();
+        $this->items = new ItemRepository();
     }
 
     public function create(Request $request)
@@ -87,7 +90,7 @@ class TransferController extends BaseController
             );
 
             Session::flash('success', 'Transfer completed successfully.');
-            return $this->redirect('/inventory/transfer');
+            return $this->redirect('/inventory/transfer/history');
         } catch (Throwable $e) {
             Session::flash('error', $e->getMessage());
             Session::flash('old', [
@@ -98,6 +101,31 @@ class TransferController extends BaseController
 
             return $this->redirect('/inventory/transfer');
         }
+    }
+
+    public function history(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $filters = [
+            'item_id' => (int) $request->input('item_id', 0),
+            'source_warehouse' => (int) $request->input('source_warehouse', 0),
+            'destination_warehouse' => (int) $request->input('destination_warehouse', 0),
+            'start_date' => trim((string) $request->input('start_date', '')),
+            'end_date' => trim((string) $request->input('end_date', '')),
+            'limit' => trim((string) $request->input('limit', '20')),
+        ];
+
+        return $this->view('inventory.transfer.history', [
+            'title' => 'Transfer History',
+            'records' => $this->inventory->getTransferRecords($filters),
+            'items' => $this->items->all(),
+            'warehouses' => $this->warehouses->all(),
+            'filters' => $filters,
+        ]);
     }
 
     public function sourcePallets(Request $request)

@@ -478,6 +478,76 @@ class InventoryRepository
         return $stmt->fetchAll() ?: [];
     }
 
+    public function getTransferRecords(array $filters = []): array
+    {
+        $sql = "
+            SELECT
+                t.id,
+                t.item_id,
+                t.source_warehouse,
+                t.destination_warehouse,
+                t.source_pallet,
+                t.dest_pallet,
+                t.quantity_transferred,
+                t.pieces_transferred,
+                t.date_transferred,
+                t.processed_by,
+                i.name AS item_name,
+                sw.name AS source_warehouse_name,
+                dw.name AS destination_warehouse_name
+            FROM transfers t
+            INNER JOIN items i ON t.item_id = i.id
+            INNER JOIN warehouses sw ON t.source_warehouse = sw.id
+            INNER JOIN warehouses dw ON t.destination_warehouse = dw.id
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND t.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
+
+        if (!empty($filters['source_warehouse'])) {
+            $sql .= " AND t.source_warehouse = :source_warehouse";
+            $params['source_warehouse'] = (int) $filters['source_warehouse'];
+        }
+
+        if (!empty($filters['destination_warehouse'])) {
+            $sql .= " AND t.destination_warehouse = :destination_warehouse";
+            $params['destination_warehouse'] = (int) $filters['destination_warehouse'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(t.date_transferred) >= :start_date";
+            $params['start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(t.date_transferred) <= :end_date";
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        $sql .= " ORDER BY t.date_transferred DESC";
+
+        $limit = $filters['limit'] ?? '20';
+        $allowedLimits = ['20', '50', '100', '500', 'ALL'];
+
+        if (!in_array((string) $limit, $allowedLimits, true)) {
+            $limit = '20';
+        }
+
+        if ($limit !== 'ALL') {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function getOutboundItemOptions(): array
     {
         $stmt = $this->pdo->query("

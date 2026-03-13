@@ -52,3 +52,4 @@ $router->get('/inventory/outbound/history', [OutboundController::class, 'history
 
 $router->get('/inventory/transfer', [TransferController::class, 'create']);
 $router->post('/inventory/transfer', [TransferController::class, 'store']);
+$router->get('/inventory/transfer/history', [TransferController::class, 'history']);

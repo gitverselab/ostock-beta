@@ -15,6 +15,7 @@ $isInboundHistory = $currentPath === '/inventory/inbound/history';
 $isOutboundCreate = $currentPath === '/inventory/outbound';
 $isOutboundHistory = $currentPath === '/inventory/outbound/history';
 $isTransferCreate = $currentPath === '/inventory/transfer';
+$isTransferHistory = $currentPath === '/inventory/transfer/history';
 
 $navLinkClass = function (bool $active): string {
     if ($active) {
@@ -83,6 +84,10 @@ $navLinkClass = function (bool $active): string {
             <a href="/inventory/transfer" class="<?= $navLinkClass($isTransferCreate) ?>">
                 Transfer Entry
             </a>
+
+            <a href="/inventory/transfer/history" class="<?= $navLinkClass($isTransferHistory) ?>">
+                Transfer History
+            </a>
         </div>
 
         <div class="mt-6 mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -90,7 +95,7 @@ $navLinkClass = function (bool $active): string {
         </div>
 
         <div class="rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            Transfer history comes after this batch.
+            Inventory summaries, audit trails, and stock dashboards can be added after transfer history.
         </div>
     </nav>
 </aside>
