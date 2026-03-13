@@ -67,6 +67,38 @@ class InventoryRepository
         return $row ?: null;
     }
 
+    public function getTransferSourceRowsLocked(int $itemId, string $palletId, int $warehouseId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                id,
+                item_id,
+                quantity,
+                items_per_pc,
+                uom,
+                expiry_date,
+                production_date,
+                pallet_id,
+                warehouse_id,
+                date_received,
+                processed_by
+            FROM inventory
+            WHERE item_id = :item_id
+              AND pallet_id = :pallet_id
+              AND warehouse_id = :warehouse_id
+            ORDER BY date_received ASC, id ASC
+            FOR UPDATE
+        ");
+
+        $stmt->execute([
+            'item_id' => $itemId,
+            'pallet_id' => $palletId,
+            'warehouse_id' => $warehouseId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function updateInventoryTotals(
         int $inventoryId,
         int $newQuantity,
@@ -135,6 +167,7 @@ class InventoryRepository
                 warehouse_id,
                 items_per_pc,
                 date_received,
+                transfer_id,
                 processed_by
             ) VALUES (
                 :item_id,
@@ -146,6 +179,7 @@ class InventoryRepository
                 :warehouse_id,
                 :items_per_pc,
                 :date_received,
+                :transfer_id,
                 :processed_by
             )
         ");
@@ -160,6 +194,7 @@ class InventoryRepository
             'warehouse_id' => $data['warehouse_id'],
             'items_per_pc' => $data['items_per_pc'],
             'date_received' => $data['date_received'],
+            'transfer_id' => $data['transfer_id'] ?? null,
             'processed_by' => $data['processed_by'],
         ]);
 
@@ -177,6 +212,7 @@ class InventoryRepository
                 items_per_pc,
                 outbound_type,
                 date_removed,
+                transfer_id,
                 processed_by,
                 production_date,
                 expiry_date
@@ -188,6 +224,7 @@ class InventoryRepository
                 :items_per_pc,
                 :outbound_type,
                 :date_removed,
+                :transfer_id,
                 :processed_by,
                 :production_date,
                 :expiry_date
@@ -202,9 +239,51 @@ class InventoryRepository
             'items_per_pc' => $data['items_per_pc'],
             'outbound_type' => $data['outbound_type'],
             'date_removed' => $data['date_removed'],
+            'transfer_id' => $data['transfer_id'] ?? null,
             'processed_by' => $data['processed_by'],
             'production_date' => $data['production_date'],
             'expiry_date' => $data['expiry_date'],
+        ]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    public function insertTransfer(array $data): int
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO transfers (
+                item_id,
+                source_warehouse,
+                destination_warehouse,
+                source_pallet,
+                dest_pallet,
+                quantity_transferred,
+                pieces_transferred,
+                date_transferred,
+                processed_by
+            ) VALUES (
+                :item_id,
+                :source_warehouse,
+                :destination_warehouse,
+                :source_pallet,
+                :dest_pallet,
+                :quantity_transferred,
+                :pieces_transferred,
+                :date_transferred,
+                :processed_by
+            )
+        ");
+
+        $stmt->execute([
+            'item_id' => $data['item_id'],
+            'source_warehouse' => $data['source_warehouse'],
+            'destination_warehouse' => $data['destination_warehouse'],
+            'source_pallet' => $data['source_pallet'],
+            'dest_pallet' => $data['dest_pallet'],
+            'quantity_transferred' => $data['quantity_transferred'],
+            'pieces_transferred' => $data['pieces_transferred'],
+            'date_transferred' => $data['date_transferred'],
+            'processed_by' => $data['processed_by'],
         ]);
 
         return (int) $this->pdo->lastInsertId();
@@ -335,7 +414,7 @@ class InventoryRepository
         return $stmt->fetchAll() ?: [];
     }
 
-    public function getOutboundRecords(array $filters = []) : array
+    public function getOutboundRecords(array $filters = []): array
     {
         $sql = "
             SELECT
@@ -400,6 +479,21 @@ class InventoryRepository
     }
 
     public function getOutboundItemOptions(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT DISTINCT
+                items.id,
+                items.name,
+                items.item_code
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            ORDER BY items.name ASC
+        ");
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getTransferItemOptions(): array
     {
         $stmt = $this->pdo->query("
             SELECT DISTINCT
