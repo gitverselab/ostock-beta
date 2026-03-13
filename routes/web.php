@@ -6,6 +6,7 @@ use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\Inventory\InboundController;
 use App\Controllers\Inventory\OutboundController;
+use App\Controllers\Inventory\ReportController;
 use App\Controllers\Inventory\TransferController;
 use App\Controllers\Master\ItemController;
 use App\Controllers\Master\WarehouseController;
@@ -53,3 +54,5 @@ $router->get('/inventory/outbound/history', [OutboundController::class, 'history
 $router->get('/inventory/transfer', [TransferController::class, 'create']);
 $router->post('/inventory/transfer', [TransferController::class, 'store']);
 $router->get('/inventory/transfer/history', [TransferController::class, 'history']);
+
+$router->get('/inventory/report', [ReportController::class, 'index']);

@@ -16,6 +16,202 @@ class InventoryRepository
         $this->pdo = Database::connection();
     }
 
+    public function getFinishedGoodCategoryId(): int
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id
+            FROM item_categories
+            WHERE category_name = :category_name
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'category_name' => 'Finished Good',
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ? (int) $row['id'] : 0;
+    }
+
+    public function getFinishedGoodsKpis(int $categoryId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                COALESCE(SUM(inv.items_per_pc), 0) AS total_pieces,
+                COUNT(DISTINCT inv.pallet_id) AS total_pallets,
+                COUNT(DISTINCT inv.item_id) AS distinct_skus
+            FROM inventory inv
+            INNER JOIN items i ON inv.item_id = i.id
+            WHERE i.category_id = :category_id
+        ");
+
+        $stmt->execute([
+            'category_id' => $categoryId,
+        ]);
+
+        $kpis = $stmt->fetch() ?: [];
+
+        $warehouseStmt = $this->pdo->query("
+            SELECT COUNT(*) AS count
+            FROM warehouses
+        ");
+
+        $warehouseRow = $warehouseStmt->fetch() ?: ['count' => 0];
+
+        return [
+            'total_pieces' => (int) ($kpis['total_pieces'] ?? 0),
+            'total_pallets' => (int) ($kpis['total_pallets'] ?? 0),
+            'distinct_skus' => (int) ($kpis['distinct_skus'] ?? 0),
+            'warehouses_count' => (int) ($warehouseRow['count'] ?? 0),
+        ];
+    }
+
+    public function getLowStockItems(int $categoryId, int $threshold = 100): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                i.name,
+                SUM(inv.items_per_pc) AS total_pieces
+            FROM inventory inv
+            INNER JOIN items i ON inv.item_id = i.id
+            WHERE i.category_id = :category_id
+            GROUP BY inv.item_id, i.name
+            HAVING total_pieces <= :threshold
+            ORDER BY total_pieces ASC
+            LIMIT 5
+        ");
+
+        $stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
+        $stmt->bindValue(':threshold', $threshold, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getExpiringSoonItems(int $categoryId, int $days = 14): array
+    {
+        $until = date('Y-m-d', strtotime("+{$days} days"));
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                i.name,
+                inv.pallet_id,
+                inv.expiry_date
+            FROM inventory inv
+            INNER JOIN items i ON inv.item_id = i.id
+            WHERE inv.expiry_date BETWEEN CURDATE() AND :until
+              AND i.category_id = :category_id
+            ORDER BY inv.expiry_date ASC
+            LIMIT 5
+        ");
+
+        $stmt->execute([
+            'until' => $until,
+            'category_id' => $categoryId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getRecentInboundActivities(int $categoryId, int $limit = 5): array
+    {
+        $limit = max(1, (int) $limit);
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                h.transaction_type,
+                h.quantity,
+                h.items_per_pc,
+                h.transaction_date,
+                i.name
+            FROM inventory_history h
+            INNER JOIN items i ON h.item_id = i.id
+            WHERE h.transaction_type LIKE '%inbound%'
+              AND i.category_id = :category_id
+            ORDER BY h.transaction_date DESC
+            LIMIT {$limit}
+        ");
+
+        $stmt->execute([
+            'category_id' => $categoryId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getRecentOutboundActivities(int $categoryId, int $limit = 5): array
+    {
+        $limit = max(1, (int) $limit);
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                h.transaction_type,
+                h.quantity,
+                h.items_per_pc,
+                h.transaction_date,
+                i.name
+            FROM inventory_history h
+            INNER JOIN items i ON h.item_id = i.id
+            WHERE (h.transaction_type LIKE '%outbound%' OR h.transaction_type = 'delivery')
+              AND i.category_id = :category_id
+            ORDER BY h.transaction_date DESC
+            LIMIT {$limit}
+        ");
+
+        $stmt->execute([
+            'category_id' => $categoryId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getFinishedGoodsStockByWarehouse(int $categoryId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                w.name,
+                SUM(inv.items_per_pc) AS total_stock
+            FROM inventory inv
+            INNER JOIN warehouses w ON inv.warehouse_id = w.id
+            INNER JOIN items i ON inv.item_id = i.id
+            WHERE i.category_id = :category_id
+            GROUP BY inv.warehouse_id, w.name
+            ORDER BY total_stock DESC
+        ");
+
+        $stmt->execute([
+            'category_id' => $categoryId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getFinishedGoodsStorageTracker(int $categoryId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                items.id AS item_id,
+                items.name,
+                warehouses.id AS warehouse_id,
+                warehouses.name AS warehouse_name,
+                SUM(inventory.items_per_pc) AS total_items_per_pc,
+                SUM(inventory.quantity) AS total_quantity
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE items.category_id = :category_id
+            GROUP BY items.id, warehouses.id, items.name, warehouses.name
+            ORDER BY items.name, warehouses.name
+        ");
+
+        $stmt->execute([
+            'category_id' => $categoryId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function findExistingInventory(int $itemId, string $palletId, int $warehouseId): ?array
     {
         $stmt = $this->pdo->prepare("
@@ -352,6 +548,114 @@ class InventoryRepository
         $row = $stmt->fetch();
 
         return ((int) ($row['count'] ?? 0)) > 0;
+    }
+
+    public function getInventorySummary(array $filters = []): array
+    {
+        $sql = "
+            SELECT
+                items.name AS item_name,
+                warehouses.name AS warehouse_name,
+                SUM(inventory.quantity) AS total_crates,
+                SUM(inventory.items_per_pc) AS total_items_per_pc
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND inventory.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
+
+        if (!empty($filters['warehouse_id'])) {
+            $sql .= " AND inventory.warehouse_id = :warehouse_id";
+            $params['warehouse_id'] = (int) $filters['warehouse_id'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND inventory.date_received >= :start_date";
+            $params['start_date'] = $filters['start_date'] . ' 00:00:00';
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND inventory.date_received <= :end_date";
+            $params['end_date'] = $filters['end_date'] . ' 23:59:59';
+        }
+
+        $sql .= "
+            GROUP BY inventory.item_id, inventory.warehouse_id, items.name, warehouses.name
+            ORDER BY items.name ASC, warehouses.name ASC
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function getInventoryReportRecords(array $filters = []): array
+    {
+        $sql = "
+            SELECT
+                inventory.id,
+                items.name,
+                inventory.quantity,
+                inventory.uom,
+                inventory.items_per_pc,
+                inventory.production_date,
+                inventory.expiry_date,
+                inventory.pallet_id,
+                warehouses.name AS warehouse_name,
+                inventory.date_received
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND inventory.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
+
+        if (!empty($filters['warehouse_id'])) {
+            $sql .= " AND inventory.warehouse_id = :warehouse_id";
+            $params['warehouse_id'] = (int) $filters['warehouse_id'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(inventory.date_received) >= :start_date";
+            $params['start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(inventory.date_received) <= :end_date";
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        $sql .= " ORDER BY inventory.date_received DESC";
+
+        $limit = $filters['limit'] ?? '20';
+        $allowedLimits = ['20', '50', '100', '500', 'ALL'];
+
+        if (!in_array((string) $limit, $allowedLimits, true)) {
+            $limit = '20';
+        }
+
+        if ($limit !== 'ALL') {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
     }
 
     public function getInboundRecords(array $filters = []): array
