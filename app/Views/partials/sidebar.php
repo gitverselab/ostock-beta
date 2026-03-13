@@ -17,6 +17,7 @@ $isOutboundHistory = $currentPath === '/inventory/outbound/history';
 $isTransferCreate = $currentPath === '/inventory/transfer';
 $isTransferHistory = $currentPath === '/inventory/transfer/history';
 $isInventoryReport = $currentPath === '/inventory/report';
+$isInventoryHistory = $currentPath === '/inventory/history';
 
 $navLinkClass = function (bool $active): string {
     if ($active) {
@@ -93,6 +94,10 @@ $navLinkClass = function (bool $active): string {
             <a href="/inventory/report" class="<?= $navLinkClass($isInventoryReport) ?>">
                 Inventory Report
             </a>
+
+            <a href="/inventory/history" class="<?= $navLinkClass($isInventoryHistory) ?>">
+                Inventory History
+            </a>
         </div>
 
         <div class="mt-6 mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -100,7 +105,7 @@ $navLinkClass = function (bool $active): string {
         </div>
 
         <div class="rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            Next good additions are inventory history, pallet drilldowns, and printable delivery-ready stock reports.
+            After this, the next best upgrades are edit/reversal tools and a deleted-history page for admin auditing.
         </div>
     </nav>
 </aside>

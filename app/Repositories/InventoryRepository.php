@@ -212,6 +212,38 @@ class InventoryRepository
         return $stmt->fetchAll() ?: [];
     }
 
+    public function getPalletDetailsByItemAndWarehouse(int $itemId, int $warehouseId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                inventory.id,
+                inventory.pallet_id,
+                inventory.quantity,
+                inventory.items_per_pc,
+                inventory.uom,
+                inventory.production_date,
+                inventory.expiry_date,
+                inventory.date_received,
+                inventory.processed_by,
+                items.name AS item_name,
+                items.item_code,
+                warehouses.name AS warehouse_name
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE inventory.item_id = :item_id
+              AND inventory.warehouse_id = :warehouse_id
+            ORDER BY inventory.production_date ASC, inventory.date_received ASC, inventory.id ASC
+        ");
+
+        $stmt->execute([
+            'item_id' => $itemId,
+            'warehouse_id' => $warehouseId,
+        ]);
+
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function findExistingInventory(int $itemId, string $palletId, int $warehouseId): ?array
     {
         $stmt = $this->pdo->prepare("
@@ -533,27 +565,76 @@ class InventoryRepository
         ]);
     }
 
-    public function palletExists(string $palletId): bool
+    public function getInventoryHistoryRecords(array $filters = []): array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT COUNT(*) AS count
-            FROM inventory
-            WHERE pallet_id = :pallet_id
-        ");
+        $sql = "
+            SELECT
+                h.id,
+                h.transaction_type,
+                h.reference_id,
+                h.item_id,
+                h.pallet_id,
+                h.warehouse_id,
+                h.quantity,
+                h.items_per_pc,
+                h.transaction_date,
+                h.processed_by,
+                h.details,
+                i.name AS item_name,
+                w.name AS warehouse_name
+            FROM inventory_history h
+            INNER JOIN items i ON h.item_id = i.id
+            LEFT JOIN warehouses w ON h.warehouse_id = w.id
+            WHERE 1 = 1
+        ";
 
-        $stmt->execute([
-            'pallet_id' => $palletId,
-        ]);
+        $params = [];
 
-        $row = $stmt->fetch();
+        if (!empty($filters['item_id'])) {
+            $sql .= " AND h.item_id = :item_id";
+            $params['item_id'] = (int) $filters['item_id'];
+        }
 
-        return ((int) ($row['count'] ?? 0)) > 0;
+        if (!empty($filters['warehouse_id'])) {
+            $sql .= " AND h.warehouse_id = :warehouse_id";
+            $params['warehouse_id'] = (int) $filters['warehouse_id'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND h.transaction_date >= :start_date";
+            $params['start_date'] = $filters['start_date'] . ' 00:00:00';
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND h.transaction_date <= :end_date";
+            $params['end_date'] = $filters['end_date'] . ' 23:59:59';
+        }
+
+        $sql .= " ORDER BY h.transaction_date DESC";
+
+        $limit = $filters['limit'] ?? '20';
+        $allowedLimits = ['20', '50', '100', '500', 'ALL'];
+
+        if (!in_array((string) $limit, $allowedLimits, true)) {
+            $limit = '20';
+        }
+
+        if ($limit !== 'ALL') {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll() ?: [];
     }
 
     public function getInventorySummary(array $filters = []): array
     {
         $sql = "
             SELECT
+                items.id AS item_id,
+                warehouses.id AS warehouse_id,
                 items.name AS item_name,
                 warehouses.name AS warehouse_name,
                 SUM(inventory.quantity) AS total_crates,
@@ -587,7 +668,7 @@ class InventoryRepository
         }
 
         $sql .= "
-            GROUP BY inventory.item_id, inventory.warehouse_id, items.name, warehouses.name
+            GROUP BY inventory.item_id, inventory.warehouse_id, items.id, warehouses.id, items.name, warehouses.name
             ORDER BY items.name ASC, warehouses.name ASC
         ";
 

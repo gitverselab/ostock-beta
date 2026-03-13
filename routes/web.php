@@ -56,3 +56,5 @@ $router->post('/inventory/transfer', [TransferController::class, 'store']);
 $router->get('/inventory/transfer/history', [TransferController::class, 'history']);
 
 $router->get('/inventory/report', [ReportController::class, 'index']);
+$router->get('/inventory/report/pallets', [ReportController::class, 'pallets']);
+$router->get('/inventory/history', [ReportController::class, 'history']);

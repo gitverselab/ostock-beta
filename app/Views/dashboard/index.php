@@ -242,6 +242,7 @@ foreach ($warehouseStock as $row) {
                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Warehouse</th>
                         <th class="px-4 py-3 text-right font-semibold text-slate-600">Total Crates</th>
                         <th class="px-4 py-3 text-right font-semibold text-slate-600">Total Pieces</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -258,6 +259,14 @@ foreach ($warehouseStock as $row) {
                             </td>
                             <td class="px-4 py-3 text-right text-slate-700">
                                 <?= number_format((int) ($row['total_items_per_pc'] ?? 0)) ?>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a
+                                    href="/inventory/report/pallets?item_id=<?= (int) ($row['item_id'] ?? 0) ?>&warehouse_id=<?= (int) ($row['warehouse_id'] ?? 0) ?>"
+                                    class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                                >
+                                    View Pallets
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
