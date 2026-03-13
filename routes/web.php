@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\Admin\DeletedTransactionController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\Inventory\InboundController;
@@ -58,3 +59,5 @@ $router->get('/inventory/transfer/history', [TransferController::class, 'history
 $router->get('/inventory/report', [ReportController::class, 'index']);
 $router->get('/inventory/report/pallets', [ReportController::class, 'pallets']);
 $router->get('/inventory/history', [ReportController::class, 'history']);
+
+$router->get('/admin/deleted-history', [DeletedTransactionController::class, 'index']);

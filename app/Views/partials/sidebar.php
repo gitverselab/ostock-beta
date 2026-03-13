@@ -18,6 +18,7 @@ $isTransferCreate = $currentPath === '/inventory/transfer';
 $isTransferHistory = $currentPath === '/inventory/transfer/history';
 $isInventoryReport = $currentPath === '/inventory/report';
 $isInventoryHistory = $currentPath === '/inventory/history';
+$isDeletedHistory = $currentPath === '/admin/deleted-history';
 
 $navLinkClass = function (bool $active): string {
     if ($active) {
@@ -101,11 +102,21 @@ $navLinkClass = function (bool $active): string {
         </div>
 
         <div class="mt-6 mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Admin Audit
+        </div>
+
+        <div class="space-y-1">
+            <a href="/admin/deleted-history" class="<?= $navLinkClass($isDeletedHistory) ?>">
+                Deleted History
+            </a>
+        </div>
+
+        <div class="mt-6 mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
             Next Modules
         </div>
 
         <div class="rounded-xl border border-dashed border-slate-700 px-4 py-3 text-sm text-slate-400">
-            After this, the next best upgrades are edit/reversal tools and a deleted-history page for admin auditing.
+            After this, the next best upgrade is edit/reversal tooling for inbound, outbound, and transfer transactions.
         </div>
     </nav>
 </aside>
