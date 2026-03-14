@@ -104,6 +104,72 @@ class InboundController extends BaseController
         ]);
     }
 
+    public function edit(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid inbound record selected.');
+            return $this->redirect('/inventory/inbound/history');
+        }
+
+        $record = $this->inventory->findInboundRecordById($id);
+
+        if (!$record) {
+            Session::flash('error', 'Inbound record not found.');
+            return $this->redirect('/inventory/inbound/history');
+        }
+
+        return $this->view('inventory.inbound.edit', [
+            'title' => 'Edit Inbound',
+            'record' => $record,
+            'formError' => Session::getFlash('error'),
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid inbound record selected.');
+            return $this->redirect('/inventory/inbound/history');
+        }
+
+        $data = [
+            'quantity' => (int) $request->input('quantity', 0),
+            'items_per_pc' => (int) $request->input('items_per_pc', 0),
+            'uom' => trim((string) $request->input('uom', '')),
+            'production_date' => trim((string) $request->input('production_date', '')),
+            'expiry_date' => trim((string) $request->input('expiry_date', '')),
+            'pallet_id' => trim((string) $request->input('pallet_id', '')),
+        ];
+
+        try {
+            $this->inboundService->update(
+                $id,
+                $data,
+                Auth::username() ?? 'system'
+            );
+
+            Session::flash('success', 'Inbound transaction updated successfully.');
+            return $this->redirect('/inventory/inbound/history');
+        } catch (Throwable $e) {
+            Session::flash('error', $e->getMessage());
+            return $this->redirect('/inventory/inbound/edit?id=' . $id);
+        }
+    }
+
     public function generatePallet(Request $request)
     {
         if (!Auth::check()) {

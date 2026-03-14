@@ -163,6 +163,7 @@ $limit = (string) ($filters['limit'] ?? '20');
                         <th class="px-4 py-3 text-right font-semibold text-slate-600">Pieces Transferred</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Date Transferred</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Processed By</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -197,6 +198,14 @@ $limit = (string) ($filters['limit'] ?? '20');
                             </td>
                             <td class="px-4 py-3 text-slate-700">
                                 <?= htmlspecialchars((string) ($row['processed_by'] ?? '')) ?>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a
+                                    href="/inventory/transfer/edit?id=<?= (int) ($row['id'] ?? 0) ?>"
+                                    class="inline-flex items-center rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                >
+                                    Edit
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

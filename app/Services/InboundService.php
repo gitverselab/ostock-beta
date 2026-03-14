@@ -39,7 +39,7 @@ class InboundService
                 $quantity = (int) ($item['quantity'] ?? 0);
                 $uom = trim((string) ($item['uom'] ?? ''));
                 $itemsPerPc = isset($item['items_per_pc']) && $item['items_per_pc'] !== ''
-                    ? (int) $item['items_per_pc']
+                    ? (int) ($item['items_per_pc'])
                     : 0;
                 $palletId = trim((string) ($item['pallet_id'] ?? ''));
                 $productionDateInput = trim((string) ($item['production_date'] ?? ''));
@@ -136,6 +136,118 @@ class InboundService
                 if (!$historyInserted) {
                     throw new RuntimeException('Failed to log inbound transaction history.');
                 }
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    public function update(int $inboundId, array $data, string $processedBy): void
+    {
+        $original = $this->inventory->findInboundRecordById($inboundId);
+
+        if (!$original) {
+            throw new RuntimeException('Inbound record not found.');
+        }
+
+        $newQuantity = (int) ($data['quantity'] ?? 0);
+        $newItemsPerPc = (int) ($data['items_per_pc'] ?? 0);
+        $newUom = trim((string) ($data['uom'] ?? ''));
+        $newPalletId = trim((string) ($data['pallet_id'] ?? ''));
+        $productionDateInput = trim((string) ($data['production_date'] ?? ''));
+        $expiryDateInput = trim((string) ($data['expiry_date'] ?? ''));
+
+        if ($newQuantity <= 0) {
+            throw new RuntimeException('Quantity must be greater than zero.');
+        }
+
+        if ($newItemsPerPc < 0) {
+            throw new RuntimeException('Items per PC cannot be negative.');
+        }
+
+        if ($newUom === '') {
+            throw new RuntimeException('UOM is required.');
+        }
+
+        if ($newPalletId === '') {
+            throw new RuntimeException('Pallet ID is required.');
+        }
+
+        $productionTimestamp = strtotime($productionDateInput);
+        $expiryTimestamp = strtotime($expiryDateInput);
+
+        if ($productionTimestamp === false || $expiryTimestamp === false) {
+            throw new RuntimeException('Invalid production or expiry date.');
+        }
+
+        $newProductionDate = date('Y-m-d H:i:s', $productionTimestamp);
+        $newExpiryDate = date('Y-m-d H:i:s', $expiryTimestamp);
+
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+
+        try {
+            if ((int) $original['quantity'] !== $newQuantity || (int) $original['items_per_pc'] !== $newItemsPerPc) {
+                throw new RuntimeException('This inbound transaction has been partially consumed and cannot be edited.');
+            }
+
+            $updated = $this->inventory->updateInboundRecord(
+                $inboundId,
+                $newQuantity,
+                $newItemsPerPc,
+                $newUom,
+                $newExpiryDate,
+                $newProductionDate,
+                $newPalletId,
+                $processedBy
+            );
+
+            if (!$updated) {
+                throw new RuntimeException('Failed to update inbound record.');
+            }
+
+            $historyDetails = json_encode([
+                'old' => [
+                    'quantity' => (int) ($original['quantity'] ?? 0),
+                    'items_per_pc' => (int) ($original['items_per_pc'] ?? 0),
+                    'uom' => (string) ($original['uom'] ?? ''),
+                    'expiry_date' => (string) ($original['expiry_date'] ?? ''),
+                    'production_date' => (string) ($original['production_date'] ?? ''),
+                    'pallet_id' => (string) ($original['pallet_id'] ?? ''),
+                ],
+                'new' => [
+                    'quantity' => $newQuantity,
+                    'items_per_pc' => $newItemsPerPc,
+                    'uom' => $newUom,
+                    'expiry_date' => $newExpiryDate,
+                    'production_date' => $newProductionDate,
+                    'pallet_id' => $newPalletId,
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            $historyInserted = $this->inventory->insertHistory([
+                'transaction_type' => 'inbound_edit',
+                'reference_id' => $inboundId,
+                'item_id' => (int) $original['item_id'],
+                'pallet_id' => $newPalletId,
+                'warehouse_id' => (int) $original['warehouse_id'],
+                'quantity' => $newQuantity,
+                'items_per_pc' => $newItemsPerPc,
+                'uom' => $newUom,
+                'production_date' => $newProductionDate,
+                'expiry_date' => $newExpiryDate,
+                'processed_by' => $processedBy,
+                'details' => $historyDetails,
+            ]);
+
+            if (!$historyInserted) {
+                throw new RuntimeException('Failed to log inbound edit.');
             }
 
             $pdo->commit();

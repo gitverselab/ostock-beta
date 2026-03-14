@@ -51,7 +51,7 @@ class OutboundService
                 $palletId = trim((string) ($item['pallet_id'] ?? ''));
                 $quantity = (int) ($item['quantity'] ?? 0);
                 $itemsPerPc = isset($item['items_per_pc']) && $item['items_per_pc'] !== ''
-                    ? (int) $item['items_per_pc']
+                    ? (int) ($item['items_per_pc'])
                     : 0;
 
                 if ($itemId <= 0 || $palletId === '') {
@@ -134,6 +134,153 @@ class OutboundService
                 if (!$historyInserted) {
                     throw new RuntimeException('Failed to log outbound transaction history.');
                 }
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    public function update(int $outboundId, int $newCrates, int $newPieces, string $processedBy): void
+    {
+        $original = $this->inventory->findOutboundRecordById($outboundId);
+
+        if (!$original) {
+            throw new RuntimeException('Outbound record not found.');
+        }
+
+        if ($newCrates <= 0) {
+            throw new RuntimeException('Crates removed must be greater than zero.');
+        }
+
+        if ($newPieces < 0) {
+            throw new RuntimeException('Pieces removed cannot be negative.');
+        }
+
+        $pdo = Database::connection();
+        $dateRemoved = date('Y-m-d H:i:s');
+
+        $pdo->beginTransaction();
+
+        try {
+            $restoredInventory = $this->inventory->findLockedInventoryForOutbound(
+                (int) $original['item_id'],
+                (string) $original['pallet_id'],
+                (int) $original['warehouse_id']
+            );
+
+            if ($restoredInventory) {
+                $restoredQty = (int) $restoredInventory['quantity'] + (int) $original['quantity_removed'];
+                $restoredPieces = (int) $restoredInventory['items_per_pc'] + (int) $original['items_per_pc'];
+
+                $ok = $this->inventory->updateInventoryStockOnly(
+                    (int) $restoredInventory['id'],
+                    $restoredQty,
+                    $restoredPieces
+                );
+
+                if (!$ok) {
+                    throw new RuntimeException('Failed to reverse original outbound.');
+                }
+            } else {
+                $this->inventory->insertInventory([
+                    'item_id' => (int) $original['item_id'],
+                    'quantity' => (int) $original['quantity_removed'],
+                    'items_per_pc' => (int) $original['items_per_pc'],
+                    'warehouse_id' => (int) $original['warehouse_id'],
+                    'pallet_id' => (string) $original['pallet_id'],
+                    'production_date' => (string) ($original['production_date'] ?? ''),
+                    'expiry_date' => (string) ($original['expiry_date'] ?? ''),
+                    'date_received' => $dateRemoved,
+                    'uom' => (string) ($original['item_uom'] ?? ''),
+                    'processed_by' => $processedBy,
+                ]);
+            }
+
+            $inventoryRow = $this->inventory->findLockedInventoryForOutbound(
+                (int) $original['item_id'],
+                (string) $original['pallet_id'],
+                (int) $original['warehouse_id']
+            );
+
+            if (!$inventoryRow) {
+                throw new RuntimeException('Source inventory not found after reversal.');
+            }
+
+            if ($newCrates > (int) $inventoryRow['quantity'] || $newPieces > (int) $inventoryRow['items_per_pc']) {
+                throw new RuntimeException('Not enough stock available for new outbound values.');
+            }
+
+            $updatedQty = (int) $inventoryRow['quantity'] - $newCrates;
+            $updatedPieces = (int) $inventoryRow['items_per_pc'] - $newPieces;
+
+            if ($updatedQty <= 0 && $updatedPieces <= 0) {
+                $deleted = $this->inventory->deleteInventory((int) $inventoryRow['id']);
+
+                if (!$deleted) {
+                    throw new RuntimeException('Failed to update inventory with new outbound values.');
+                }
+            } else {
+                $updated = $this->inventory->updateInventoryStockOnly(
+                    (int) $inventoryRow['id'],
+                    $updatedQty,
+                    $updatedPieces
+                );
+
+                if (!$updated) {
+                    throw new RuntimeException('Failed to update inventory with new outbound values.');
+                }
+            }
+
+            $recordUpdated = $this->inventory->updateOutboundRecord(
+                $outboundId,
+                $newCrates,
+                $newPieces,
+                $dateRemoved,
+                $processedBy
+            );
+
+            if (!$recordUpdated) {
+                throw new RuntimeException('Failed to update outbound record.');
+            }
+
+            $historyDetails = json_encode([
+                'original' => [
+                    'quantity_removed' => (int) ($original['quantity_removed'] ?? 0),
+                    'items_per_pc' => (int) ($original['items_per_pc'] ?? 0),
+                    'pallet_id' => (string) ($original['pallet_id'] ?? ''),
+                    'production_date' => (string) ($original['production_date'] ?? ''),
+                    'expiry_date' => (string) ($original['expiry_date'] ?? ''),
+                ],
+                'new' => [
+                    'quantity_removed' => $newCrates,
+                    'items_per_pc' => $newPieces,
+                    'date_removed' => $dateRemoved,
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            $historyInserted = $this->inventory->insertHistory([
+                'transaction_type' => 'outbound_edit',
+                'reference_id' => $outboundId,
+                'item_id' => (int) $original['item_id'],
+                'pallet_id' => (string) $original['pallet_id'],
+                'warehouse_id' => (int) $original['warehouse_id'],
+                'quantity' => $newCrates,
+                'items_per_pc' => $newPieces,
+                'uom' => (string) ($original['item_uom'] ?? ''),
+                'production_date' => (string) ($original['production_date'] ?? ''),
+                'expiry_date' => (string) ($original['expiry_date'] ?? ''),
+                'processed_by' => $processedBy,
+                'details' => $historyDetails,
+            ]);
+
+            if (!$historyInserted) {
+                throw new RuntimeException('Failed to log outbound edit in inventory history.');
             }
 
             $pdo->commit();

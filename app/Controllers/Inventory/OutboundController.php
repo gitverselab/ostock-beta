@@ -105,6 +105,67 @@ class OutboundController extends BaseController
         ]);
     }
 
+    public function edit(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid outbound record selected.');
+            return $this->redirect('/inventory/outbound/history');
+        }
+
+        $record = $this->inventory->findOutboundRecordById($id);
+
+        if (!$record) {
+            Session::flash('error', 'Outbound record not found.');
+            return $this->redirect('/inventory/outbound/history');
+        }
+
+        return $this->view('inventory.outbound.edit', [
+            'title' => 'Edit Outbound',
+            'record' => $record,
+            'formError' => Session::getFlash('error'),
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid outbound record selected.');
+            return $this->redirect('/inventory/outbound/history');
+        }
+
+        $newCrates = (int) $request->input('quantity_removed', 0);
+        $newPieces = (int) $request->input('items_per_pc', 0);
+
+        try {
+            $this->outboundService->update(
+                $id,
+                $newCrates,
+                $newPieces,
+                Auth::username() ?? 'system'
+            );
+
+            Session::flash('success', 'Outbound transaction updated successfully.');
+            return $this->redirect('/inventory/outbound/history');
+        } catch (Throwable $e) {
+            Session::flash('error', $e->getMessage());
+            return $this->redirect('/inventory/outbound/edit?id=' . $id);
+        }
+    }
+
     public function pallets(Request $request)
     {
         if (!Auth::check()) {

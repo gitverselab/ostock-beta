@@ -128,6 +128,71 @@ class TransferController extends BaseController
         ]);
     }
 
+    public function edit(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid transfer record selected.');
+            return $this->redirect('/inventory/transfer/history');
+        }
+
+        $record = $this->inventory->findTransferById($id);
+
+        if (!$record) {
+            Session::flash('error', 'Transfer record not found.');
+            return $this->redirect('/inventory/transfer/history');
+        }
+
+        return $this->view('inventory.transfer.edit', [
+            'title' => 'Edit Transfer',
+            'record' => $record,
+            'formError' => Session::getFlash('error'),
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        if (!Auth::check()) {
+            Session::flash('error', 'Please sign in first.');
+            return $this->redirect('/login');
+        }
+
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0) {
+            Session::flash('error', 'Invalid transfer record selected.');
+            return $this->redirect('/inventory/transfer/history');
+        }
+
+        $newSourcePallet = trim((string) $request->input('source_pallet', ''));
+        $newDestPallet = trim((string) $request->input('dest_pallet', ''));
+        $newQty = (int) $request->input('quantity_transferred', 0);
+        $newPieces = (int) $request->input('pieces_transferred', 0);
+
+        try {
+            $this->transferService->update(
+                $id,
+                $newSourcePallet,
+                $newDestPallet,
+                $newQty,
+                $newPieces,
+                Auth::username() ?? 'system'
+            );
+
+            Session::flash('success', 'Transfer updated successfully.');
+            return $this->redirect('/inventory/transfer/history');
+        } catch (Throwable $e) {
+            Session::flash('error', $e->getMessage());
+            return $this->redirect('/inventory/transfer/edit?id=' . $id);
+        }
+    }
+
     public function sourcePallets(Request $request)
     {
         if (!Auth::check()) {

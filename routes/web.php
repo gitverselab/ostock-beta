@@ -47,14 +47,20 @@ $router->post('/warehouses/delete', [WarehouseController::class, 'destroy']);
 $router->get('/inventory/inbound', [InboundController::class, 'create']);
 $router->post('/inventory/inbound', [InboundController::class, 'store']);
 $router->get('/inventory/inbound/history', [InboundController::class, 'history']);
+$router->get('/inventory/inbound/edit', [InboundController::class, 'edit']);
+$router->post('/inventory/inbound/edit', [InboundController::class, 'update']);
 
 $router->get('/inventory/outbound', [OutboundController::class, 'create']);
 $router->post('/inventory/outbound', [OutboundController::class, 'store']);
 $router->get('/inventory/outbound/history', [OutboundController::class, 'history']);
+$router->get('/inventory/outbound/edit', [OutboundController::class, 'edit']);
+$router->post('/inventory/outbound/edit', [OutboundController::class, 'update']);
 
 $router->get('/inventory/transfer', [TransferController::class, 'create']);
 $router->post('/inventory/transfer', [TransferController::class, 'store']);
 $router->get('/inventory/transfer/history', [TransferController::class, 'history']);
+$router->get('/inventory/transfer/edit', [TransferController::class, 'edit']);
+$router->post('/inventory/transfer/edit', [TransferController::class, 'update']);
 
 $router->get('/inventory/report', [ReportController::class, 'index']);
 $router->get('/inventory/report/pallets', [ReportController::class, 'pallets']);

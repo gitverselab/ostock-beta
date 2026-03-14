@@ -244,6 +244,64 @@ class InventoryRepository
         return $stmt->fetchAll() ?: [];
     }
 
+    public function findInboundRecordById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                inventory.*,
+                items.name AS item_name,
+                warehouses.name AS warehouse_name
+            FROM inventory
+            INNER JOIN items ON inventory.item_id = items.id
+            INNER JOIN warehouses ON inventory.warehouse_id = warehouses.id
+            WHERE inventory.id = :id
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'id' => $id,
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    public function updateInboundRecord(
+        int $id,
+        int $quantity,
+        int $itemsPerPc,
+        string $uom,
+        string $expiryDate,
+        string $productionDate,
+        string $palletId,
+        string $processedBy
+    ): bool {
+        $stmt = $this->pdo->prepare("
+            UPDATE inventory
+            SET
+                quantity = :quantity,
+                items_per_pc = :items_per_pc,
+                uom = :uom,
+                expiry_date = :expiry_date,
+                production_date = :production_date,
+                pallet_id = :pallet_id,
+                processed_by = :processed_by
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
+            'quantity' => $quantity,
+            'items_per_pc' => $itemsPerPc,
+            'uom' => $uom,
+            'expiry_date' => $expiryDate,
+            'production_date' => $productionDate,
+            'pallet_id' => $palletId,
+            'processed_by' => $processedBy,
+        ]);
+    }
+
     public function findExistingInventory(int $itemId, string $palletId, int $warehouseId): ?array
     {
         $stmt = $this->pdo->prepare("
@@ -295,6 +353,56 @@ class InventoryRepository
         return $row ?: null;
     }
 
+    public function findOutboundRecordById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                oi.*,
+                i.name AS item_name,
+                i.uom AS item_uom,
+                w.name AS warehouse_name
+            FROM outbound_inventory oi
+            INNER JOIN items i ON oi.item_id = i.id
+            INNER JOIN warehouses w ON oi.warehouse_id = w.id
+            WHERE oi.id = :id
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'id' => $id,
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    public function updateOutboundRecord(
+        int $id,
+        int $quantityRemoved,
+        int $itemsPerPc,
+        string $dateRemoved,
+        string $processedBy
+    ): bool {
+        $stmt = $this->pdo->prepare("
+            UPDATE outbound_inventory
+            SET
+                quantity_removed = :quantity_removed,
+                items_per_pc = :items_per_pc,
+                date_removed = :date_removed,
+                processed_by = :processed_by
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
+            'quantity_removed' => $quantityRemoved,
+            'items_per_pc' => $itemsPerPc,
+            'date_removed' => $dateRemoved,
+            'processed_by' => $processedBy,
+        ]);
+    }
+
     public function getTransferSourceRowsLocked(int $itemId, string $palletId, int $warehouseId): array
     {
         $stmt = $this->pdo->prepare("
@@ -325,6 +433,124 @@ class InventoryRepository
         ]);
 
         return $stmt->fetchAll() ?: [];
+    }
+
+    public function findTransferById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                t.*,
+                i.name AS item_name,
+                i.item_code,
+                sw.name AS source_warehouse_name,
+                dw.name AS destination_warehouse_name
+            FROM transfers t
+            INNER JOIN items i ON t.item_id = i.id
+            INNER JOIN warehouses sw ON t.source_warehouse = sw.id
+            INNER JOIN warehouses dw ON t.destination_warehouse = dw.id
+            WHERE t.id = :id
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'id' => $id,
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    public function getTransferOutboundMetadata(int $transferId): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                oi.production_date,
+                oi.expiry_date,
+                i.uom
+            FROM outbound_inventory oi
+            INNER JOIN items i ON oi.item_id = i.id
+            WHERE oi.transfer_id = :transfer_id
+            ORDER BY oi.id DESC
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'transfer_id' => $transferId,
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    public function findDestinationInventoryByTransferId(int $itemId, int $warehouseId, int $transferId): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                id,
+                quantity,
+                items_per_pc
+            FROM inventory
+            WHERE item_id = :item_id
+              AND warehouse_id = :warehouse_id
+              AND transfer_id = :transfer_id
+            LIMIT 1
+            FOR UPDATE
+        ");
+
+        $stmt->execute([
+            'item_id' => $itemId,
+            'warehouse_id' => $warehouseId,
+            'transfer_id' => $transferId,
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
+
+    public function updateTransferRecord(
+        int $id,
+        string $sourcePallet,
+        string $destPallet,
+        int $quantityTransferred,
+        int $piecesTransferred,
+        string $dateTransferred
+    ): bool {
+        $stmt = $this->pdo->prepare("
+            UPDATE transfers
+            SET
+                source_pallet = :source_pallet,
+                dest_pallet = :dest_pallet,
+                quantity_transferred = :quantity_transferred,
+                pieces_transferred = :pieces_transferred,
+                date_transferred = :date_transferred
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
+            'source_pallet' => $sourcePallet,
+            'dest_pallet' => $destPallet,
+            'quantity_transferred' => $quantityTransferred,
+            'pieces_transferred' => $piecesTransferred,
+            'date_transferred' => $dateTransferred,
+        ]);
+    }
+
+    public function updateOutboundTypeByTransferId(int $transferId, string $outboundType): bool
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE outbound_inventory
+            SET outbound_type = :outbound_type
+            WHERE transfer_id = :transfer_id
+        ");
+
+        return $stmt->execute([
+            'transfer_id' => $transferId,
+            'outbound_type' => $outboundType,
+        ]);
     }
 
     public function updateInventoryTotals(
